@@ -1,7 +1,13 @@
+const mongoose = require('mongoose');
+const deletefile = require('../util/file');
 const { validationResult } = require('express-validator');
+
 const path = require('path');
 const fs = require('fs');
+
 const Product = require('../models/product');
+const { file } = require('pdfkit');
+const product = require('../models/product');
 
 exports.getAddProduct = (req, res, next) => {
   res.render('admin/edit-product', {
@@ -124,6 +130,7 @@ exports.postEditProduct = (req, res, next) => {
      // product.imageUrl = updatedImageUrl;
      if (updatedImage) {
       product.imageUrl = updatedImage.path;
+      file.deletefile(product.imageUrl);
       const dirPath = path.dirname(product.imageUrl);
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
@@ -162,7 +169,14 @@ exports.getProducts = (req, res, next) => {
 
 exports.postDeleteProduct = (req, res, next) => {
   const prodId = req.body.productId;
-  Product.findByIdAndDelete({ _id: prodId, userId: req.user._id })
+  product.findById(prodId)
+  .then(product=>{
+    if(!product){
+      return next(new Error('Product not found'));
+    }
+    deletefile.deletefile(product.imageUrl);
+  return Product.findByIdAndDelete({ _id: prodId, userId: req.user._id });
+  })
     .then(() => {
       console.log('DESTROYED PRODUCT');
       res.redirect('/admin/products');
@@ -172,4 +186,4 @@ exports.postDeleteProduct = (req, res, next) => {
       error.httpStatusCode = 500;
       return next(error);
     });
-};
+  };
